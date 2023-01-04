@@ -125,9 +125,9 @@ def plot_feature_maps(model, train_dataset):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-epochs', default=20, type=int,
+    parser.add_argument('-epochs', default=2, type=int,
                         help="""Number of epochs to train for. You should not
-                        need to change this value for your plots.""")
+                        need to change this value for your plots.""") # TODO: CHANGE DEFAULT TO 20 AGAIN
     parser.add_argument('-batch_size', default=8, type=int,
                         help="Size of training batch.")
     parser.add_argument('-learning_rate', type=float, default=0.01,
