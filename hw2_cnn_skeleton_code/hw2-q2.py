@@ -26,8 +26,21 @@ class CNN(nn.Module):
         https://pytorch.org/docs/stable/nn.html
         """
         super(CNN, self).__init__()
-        
-        # Implement me!
+        # image shape: [28, 28]
+        self.conv1 = nn.Conv2d(1, 8, kernel_size=(5, 5), stride=(1, 1)) # TODO: Include padding=() -> preserve image size
+        # image shape: [24, 24]
+        self.pool = nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
+        # image shape: [12, 12]
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        # image shape: [10, 10]
+        # TODO: check again affine transformation 1:
+        # Nr. of input features = number of output channels (16) x output width (10) x output height (10)
+        self.fc1 = nn.Linear(16*10*10, 600)
+        # image shape: [600]... # TODO: What is exact image shape here?
+        self.dropout = nn.Dropout(p=dropout_prob)
+        # TODO: check again affine transformation 2 and 3:
+        self.fc2 = nn.Linear(600, 120) # (# of output features fc1, # given)
+        self.fc3 = nn.Linear(120, 10) # (# of ouput features fc2, # classes)
         
     def forward(self, x):
         """
@@ -45,7 +58,19 @@ class CNN(nn.Module):
         forward pass -- this is enough for it to figure out how to do the
         backward pass.
         """
-        raise NotImplementedError
+        print('x.shape:', x.shape)
+        x = x.
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = torch.flatten(x, 1) # flatten all dimensions except batch
+        x = x.view(-1, 1600) # TODO: Check if torch.flatten of x.view is needed - not verified yet
+        x = F.relu(self.dropout(self.fc1(x))) # changing order of activation and droput due to computational efficiency
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        x = F.log_softmax(x, dim=1)
+        
+        return x
+        
 
 def train_batch(X, y, model, optimizer, criterion, **kwargs):
     """
@@ -65,7 +90,14 @@ def train_batch(X, y, model, optimizer, criterion, **kwargs):
     This function should return the loss (tip: call loss.item()) to get the
     loss as a numerical value that is not part of the computation graph.
     """
-    raise NotImplementedError
+    print(X.shape)
+    y_pred = model(X)
+    loss = criterion(y_pred, y)
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+    
+    return loss.item()
 
 def predict(model, X):
     """X (n_examples x n_features)"""
@@ -133,7 +165,7 @@ def main():
     parser.add_argument('-learning_rate', type=float, default=0.01,
                         help="""Learning rate for parameter updates""")
     parser.add_argument('-l2_decay', type=float, default=0)
-    parser.add_argument('-dropout', type=float, default=0.8)
+    parser.add_argument('-dropout', type=float, default=0.3) # TODO: Change default back to 0.8
     parser.add_argument('-optimizer',
                         choices=['sgd', 'adam'], default='sgd')
     
@@ -168,18 +200,19 @@ def main():
     valid_accs = []
     train_losses = []
     for ii in epochs:
-        print('Training epoch {}'.format(ii))
+        print('########### Training epoch {} #############'.format(ii))
         for X_batch, y_batch in train_dataloader:
+            print('X_batch.shape:', X_batch.shape)
             loss = train_batch(
                 X_batch, y_batch, model, optimizer, criterion)
             train_losses.append(loss)
 
         mean_loss = torch.tensor(train_losses).mean().item()
-        print('Training loss: %.4f' % (mean_loss))
+        print(' -Training loss: %.4f' % (mean_loss))
 
         train_mean_losses.append(mean_loss)
         valid_accs.append(evaluate(model, dev_X, dev_y))
-        print('Valid acc: %.4f' % (valid_accs[-1]))
+        print(' -Valid acc: %.4f' % (valid_accs[-1]))
 
     print('Final Test acc: %.4f' % (evaluate(model, test_X, test_y)))
     # plot
