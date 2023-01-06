@@ -168,7 +168,7 @@ def plot_feature_maps(model, train_dataset):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-epochs', default=2, type=int,
+    parser.add_argument('-epochs', default=20, type=int,
                         help="""Number of epochs to train for. You should not
                         need to change this value for your plots.""") # TODO: CHANGE DEFAULT TO 20 AGAIN
     parser.add_argument('-batch_size', default=8, type=int,
@@ -176,7 +176,7 @@ def main():
     parser.add_argument('-learning_rate', type=float, default=0.01,
                         help="""Learning rate for parameter updates""")
     parser.add_argument('-l2_decay', type=float, default=0)
-    parser.add_argument('-dropout', type=float, default=0.3) # TODO: Change default back to 0.8
+    parser.add_argument('-dropout', type=float, default=0.8) # TODO: Change default back to 0.8
     parser.add_argument('-optimizer',
                         choices=['sgd', 'adam'], default='sgd')
     
