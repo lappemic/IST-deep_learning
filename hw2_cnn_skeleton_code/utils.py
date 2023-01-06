@@ -116,6 +116,11 @@ class ClassificationDataset(torch.utils.data.Dataset):
         train_X, train_y = data["train"]
         dev_X, dev_y = data["dev"]
         test_X, test_y = data["test"]
+        
+        # reshaping from vector for CNN
+        train_X = train_X.reshape(-1, 1, 28, 28)
+        dev_X = dev_X.reshape(-1, 1, 28, 28)
+        test_X = test_X.reshape(-1, 1, 28, 28)
 
         self.X = torch.tensor(train_X, dtype=torch.float32)
         self.y = torch.tensor(train_y, dtype=torch.long)

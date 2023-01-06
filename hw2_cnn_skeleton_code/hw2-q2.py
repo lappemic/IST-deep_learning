@@ -35,7 +35,7 @@ class CNN(nn.Module):
         # image shape: [10, 10]
         # TODO: check again affine transformation 1:
         # Nr. of input features = number of output channels (16) x output width (10) x output height (10)
-        self.fc1 = nn.Linear(16*10*10, 600)
+        self.fc1 = nn.Linear(16*5*5, 600)
         # image shape: [600]... # TODO: What is exact image shape here?
         self.dropout = nn.Dropout(p=dropout_prob)
         # TODO: check again affine transformation 2 and 3:
@@ -59,11 +59,18 @@ class CNN(nn.Module):
         backward pass.
         """
         print('x.shape:', x.shape)
-        x = x.
+        # x.shape = [8, 1, 28, 28]
         x = self.pool(F.relu(self.conv1(x)))
+        # x.shape from convolution = [8, 1, 24, 24]
+        # x.shape from maxpool = [8, 1, 12, 12]
         x = self.pool(F.relu(self.conv2(x)))
-        x = torch.flatten(x, 1) # flatten all dimensions except batch
-        x = x.view(-1, 1600) # TODO: Check if torch.flatten of x.view is needed - not verified yet
+        # x.shape from conv = [8, 1, 10, 10]
+        # x.shape from maxpool = [8, 1, 5, 5]
+        # print('x.shape after second convo:', x.shape)
+        # x = torch.flatten(x, 1) # flatten all dimensions except batch
+        # print('x.shape aftre flattening:', x.shape)
+        x = x.view(x.size(0), -1) # TODO: Check if torch.flatten of x.view is needed - not verified yet
+        # print('x.shape after view:', x.shape)
         x = F.relu(self.dropout(self.fc1(x))) # changing order of activation and droput due to computational efficiency
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -90,12 +97,16 @@ def train_batch(X, y, model, optimizer, criterion, **kwargs):
     This function should return the loss (tip: call loss.item()) to get the
     loss as a numerical value that is not part of the computation graph.
     """
-    print(X.shape)
+    print('X.shape:', X.shape)
+    optimizer.zero_grad()
     y_pred = model(X)
+    print('y_pred.shape:', y_pred.shape)
+    print('y_pred:', y_pred)
+    print('y.shape:', y.shape)
+    print('y:', y)
     loss = criterion(y_pred, y)
     loss.backward()
     optimizer.step()
-    optimizer.zero_grad()
     
     return loss.item()
 
@@ -203,6 +214,10 @@ def main():
         print('########### Training epoch {} #############'.format(ii))
         for X_batch, y_batch in train_dataloader:
             print('X_batch.shape:', X_batch.shape)
+            # print('X_batch[1]:', X_batch[1])
+            print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+            i = 3
+            # print('y_batch[{}]:'.format(i), y_batch[i])
             loss = train_batch(
                 X_batch, y_batch, model, optimizer, criterion)
             train_losses.append(loss)
