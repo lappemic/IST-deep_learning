@@ -27,15 +27,15 @@ class CNN(nn.Module):
         """
         super(CNN, self).__init__()
         # image shape: [28, 28]
-        self.conv1 = nn.Conv2d(1, 8, kernel_size=(5, 5), stride=(1, 1)) # TODO: Include padding=() -> preserve image size
-        # image shape: [24, 24]
+        self.conv1 = nn.Conv2d(1, 8, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2)) # TODO: Include padding=() -> preserve image size
+        # image shape: [28, 28]
         self.pool = nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
-        # image shape: [12, 12]
+        # image shape: [14, 14]
         self.conv2 = nn.Conv2d(8, 16, kernel_size=(3, 3), stride=(1, 1), padding=0)
-        # image shape: [10, 10]
+        # image shape: [12, 12]
         # TODO: check again affine transformation 1:
-        # Nr. of input features = number of output channels (16) x output width (10) x output height (10)
-        self.fc1 = nn.Linear(16*5*5, 600)
+        # Nr. of input features = number of output channels (16) x output width (6) x output height (6)
+        self.fc1 = nn.Linear(16*6*6, 600)
         # image shape: [600]... # TODO: What is exact image shape here?
         self.dropout = nn.Dropout(p=dropout_prob)
         # TODO: check again affine transformation 2 and 3:
@@ -58,7 +58,7 @@ class CNN(nn.Module):
         forward pass -- this is enough for it to figure out how to do the
         backward pass.
         """
-        print('x.shape:', x.shape)
+        # print('x.shape:', x.shape)
         # x.shape = [8, 1, 28, 28]
         x = self.pool(F.relu(self.conv1(x)))
         # x.shape from convolution = [8, 1, 24, 24]
@@ -97,13 +97,13 @@ def train_batch(X, y, model, optimizer, criterion, **kwargs):
     This function should return the loss (tip: call loss.item()) to get the
     loss as a numerical value that is not part of the computation graph.
     """
-    print('X.shape:', X.shape)
+    # print('X.shape:', X.shape)
     optimizer.zero_grad()
     y_pred = model(X)
-    print('y_pred.shape:', y_pred.shape)
-    print('y_pred:', y_pred)
-    print('y.shape:', y.shape)
-    print('y:', y)
+    # print('y_pred.shape:', y_pred.shape)
+    # print('y_pred:', y_pred)
+    # print('y.shape:', y.shape)
+    # print('y:', y)
     loss = criterion(y_pred, y)
     loss.backward()
     optimizer.step()
@@ -213,10 +213,10 @@ def main():
     for ii in epochs:
         print('########### Training epoch {} #############'.format(ii))
         for X_batch, y_batch in train_dataloader:
-            print('X_batch.shape:', X_batch.shape)
+            # print('X_batch.shape:', X_batch.shape)
             # print('X_batch[1]:', X_batch[1])
-            print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-            i = 3
+            # print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+            # i = 3
             # print('y_batch[{}]:'.format(i), y_batch[i])
             loss = train_batch(
                 X_batch, y_batch, model, optimizer, criterion)
