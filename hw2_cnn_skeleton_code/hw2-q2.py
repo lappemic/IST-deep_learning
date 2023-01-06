@@ -135,7 +135,7 @@ def plot(epochs, plottable, ylabel='', name=''):
     plt.xlabel('Epoch')
     plt.ylabel(ylabel)
     plt.plot(epochs, plottable)
-    plt.savefig('%s.pdf' % (name), bbox_inches='tight')
+    plt.savefig('%s.png' % (name), bbox_inches='tight')
 
 
 activation = {}
@@ -153,7 +153,7 @@ def plot_feature_maps(model, train_dataset):
     output = model(data)
 
     plt.imshow(data.reshape(28,-1)) 
-    plt.savefig('original_image.pdf')
+    plt.savefig('original_image.png')
 
     k=0
     act = activation['conv1'].squeeze()
@@ -163,7 +163,7 @@ def plot_feature_maps(model, train_dataset):
         for j in range(act.size(0)//2):
             ax[i,j].imshow(act[k].detach().cpu().numpy())
             k+=1  
-            plt.savefig('activation_maps.pdf') 
+            plt.savefig('activation_maps.png') 
 
 
 def main():
