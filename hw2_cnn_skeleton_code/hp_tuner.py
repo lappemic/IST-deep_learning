@@ -1,8 +1,8 @@
 import os
 
-hp_search_arguments = ['-learning_rate 0.00001 -optimizer "adam"', 
-                       '-learning_rate 0.0005 -optimizer "adam"', 
-                       '-learning_rate 0.01 -optimizer "adam"']
+hp_search_arguments = ['-learning_rate 0.00001 -optimizer "adam" -dropout 0.3', 
+                       '-learning_rate 0.0005 -optimizer "adam" -dropout 0.3', 
+                       '-learning_rate 0.01 -optimizer "adam" -dropout 0.3']
 
 for arg in hp_search_arguments:
     print('****************************************************************************************************************')
