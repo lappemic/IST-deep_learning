@@ -65,7 +65,7 @@ class CNN(nn.Module):
         # x.shape from maxpool = [8, 1, 12, 12]
         x = self.pool(F.relu(self.conv2(x)))
         # x.shape from conv = [8, 1, 10, 10]
-        # x.shape from maxpool = [8, 1, 5, 5]
+        # x.shape from maxpool = [8, 1, 6, 6]
         # print('x.shape after second convo:', x.shape)
         # x = torch.flatten(x, 1) # flatten all dimensions except batch
         # print('x.shape aftre flattening:', x.shape)
@@ -215,9 +215,6 @@ def main():
         for X_batch, y_batch in train_dataloader:
             # print('X_batch.shape:', X_batch.shape)
             # print('X_batch[1]:', X_batch[1])
-            # print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-            # i = 3
-            # print('y_batch[{}]:'.format(i), y_batch[i])
             loss = train_batch(
                 X_batch, y_batch, model, optimizer, criterion)
             train_losses.append(loss)
