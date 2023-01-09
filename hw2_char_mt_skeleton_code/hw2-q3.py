@@ -170,7 +170,7 @@ def main():
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("--lr", type=float, default=0.003)
     parser.add_argument("--dropout", type=float, default=0.3)
-    parser.add_argument("--n_epochs", type=int, default=50)
+    parser.add_argument("--n_epochs", type=int, default=2) # TODO: Change default back to 50
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--hidden_size", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
