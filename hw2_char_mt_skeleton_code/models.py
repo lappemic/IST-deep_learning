@@ -78,7 +78,7 @@ class Encoder(nn.Module):
         dropout,
     ):
         super(Encoder, self).__init__()
-        self.hidden_size = hidden_size // 2
+        self.hidden_size = hidden_size // 2 # // because the LSTM is bidirectional
         self.dropout = dropout
 
         self.embedding = nn.Embedding(
@@ -109,15 +109,24 @@ class Encoder(nn.Module):
         # - Use torch.nn.utils.rnn.pad_packed_sequence to unpack the packed sequences
         #   (after passing them to the LSTM)
         #############################################
-        raise NotImplementedError
-        #############################################
-        # END OF YOUR CODE
+    
+        # Get the embedded representation of the src sequence
+        embedded = self.dropout(self.embedding(src))
+        # Pack the padded sequences
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, lengths, batch_first=True, enforce_sorted=False)
+        # Pass the packed sequences through the LSTM
+        packed_output, final_hidden = self.lstm(packed_embedded)
+        # Unpack the packed sequences
+        enc_output, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
+        # Apply dropout to the output
+        enc_output = self.dropout(enc_output)
+
         #############################################
         # enc_output: (batch_size, max_src_len, hidden_size)
         # final_hidden: tuple with 2 tensors
         # each tensor is (num_layers * num_directions, batch_size, hidden_size)
         # TODO: Uncomment the following line when you implement the forward pass
-        # return enc_output, final_hidden
+        return enc_output, final_hidden
 
 
 class Decoder(nn.Module):
@@ -164,7 +173,6 @@ class Decoder(nn.Module):
         # if they are of size (num_layers*num_directions, batch_size, hidden_size)
         if dec_state[0].shape[0] == 2:
             dec_state = reshape_state(dec_state)
-
         #############################################
         # TODO: Implement the forward pass of the decoder
         # Hints:
@@ -180,15 +188,38 @@ class Decoder(nn.Module):
         #         src_lengths,
         #     )
         #############################################
-        raise NotImplementedError
-        #############################################
-        # END OF YOUR CODE
+        # Get the embedded representation of the tgt sequence
+        embedded = self.embedding(tgt)
+        # Initialize the output and attention scores
+        outputs = []
+        attn_scores = []
+        # Loop over the tgt sequence
+        for t in range(tgt.shape[1]):
+            # Get the current input
+            input = embedded[:, t, :].unsqueeze(1)
+            # Apply dropout to the input
+            input = self.dropout(input)
+            # Pass the input through the LSTM
+            output, dec_state = self.lstm(input, dec_state)
+            # # If the attention mechanism is provided, compute the attention scores and apply attention to the output
+            # if self.attn is not None:
+            #     output, attn_score = self.attn(
+            #         output,
+            #         encoder_outputs,
+            #         src_lengths,
+            #     )
+            #     attn_scores.append(attn_score)
+            # Append the output to the outputs list
+            outputs.append(output)
+        # Concatenate the outputs into a single tensor
+        outputs = torch.cat(outputs, dim=1)
+
         #############################################
         # outputs: (batch_size, max_tgt_len, hidden_size)
         # dec_state: tuple with 2 tensors
         # each tensor is (num_layers, batch_size, hidden_size)
         # TODO: Uncomment the following line when you implement the forward pass
-        # return outputs, dec_state
+        return outputs, dec_state #, attn_scores
 
 
 class Seq2Seq(nn.Module):
