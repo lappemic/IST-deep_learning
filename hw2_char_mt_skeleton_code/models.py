@@ -47,13 +47,32 @@ class Attention(nn.Module):
         # - Use torch.tanh to do the tanh
         # - Use torch.masked_fill to do the masking of the padding tokens
         #############################################
-        raise NotImplementedError
+        # just initially taken from https://github.com/spro/practical-pytorch/blob/master/seq2seq-translation/seq2seq-translation-batched.ipynb
+        # to have a starting point (good source look at it ass soon as you get here):
+        max_len = encoder_outputs.size(0)
+        this_batch_size = encoder_outputs.size(1)
+
+        # Create variable to store attention energies
+        attn_energies = Variable(torch.zeros(this_batch_size, max_len)) # B x S
+
+        if USE_CUDA:
+            attn_energies = attn_energies.cuda()
+
+        # For each batch of encoder outputs
+        for b in range(this_batch_size):
+            # Calculate energy for each encoder output
+            for i in range(max_len):
+                attn_energies[b, i] = self.score(hidden[:, b], encoder_outputs[i, b].unsqueeze(0))
+                # self.score is another method in the class in the source where 'general attention' is applied as well!
+
+        # Normalize energies to weights in range 0 to 1, resize to 1 x B x S
+        attn_out = F.softmax(attn_energies).unsqueeze(1)
         #############################################
         # END OF YOUR CODE
         #############################################
         # attn_out: (batch_size, 1, hidden_size)
         # TODO: Uncomment the following line when you implement the forward pass
-        # return attn_out
+        return attn_out
 
     def sequence_mask(self, lengths):
         """
@@ -109,17 +128,28 @@ class Encoder(nn.Module):
         # - Use torch.nn.utils.rnn.pad_packed_sequence to unpack the packed sequences
         #   (after passing them to the LSTM)
         #############################################
+        # print(src.shape)
     
         # Get the embedded representation of the src sequence
         embedded = self.dropout(self.embedding(src))
-        # Pack the padded sequences
-        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, lengths, batch_first=True, enforce_sorted=False)
+        # Pack the padded sequences TODO: Check values of batch_first and enforce_sorted! Are they True resp. False correct?
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, 
+                                                            lengths, 
+                                                            batch_first=True, 
+                                                            enforce_sorted=False)
         # Pass the packed sequences through the LSTM
-        packed_output, final_hidden = self.lstm(packed_embedded)
+        packed_output, final_hidden = self.lstm(packed_embedded) # TODO: is self.hidden_size needed?
         # Unpack the packed sequences
         enc_output, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
+        enc_output = enc_output[:, :, :self.hidden_size] + enc_output[:, : ,self.hidden_size:] # Sum bidirectional outputs
         # Apply dropout to the output
         enc_output = self.dropout(enc_output)
+        print('enc_output.shape after Encoder:', enc_output.shape)
+        print('shape of final_hidden 1 and 2 after Encoder:', final_hidden[0].shape, final_hidden[1].shape)
+        
+        # Remarks for debugging
+        # - max_src_len from input (src) and enc_output are equal
+        # - enc_output has the right dimensions
 
         #############################################
         # enc_output: (batch_size, max_src_len, hidden_size)
@@ -189,16 +219,24 @@ class Decoder(nn.Module):
         #     )
         #############################################
         # Get the embedded representation of the tgt sequence
-        embedded = self.embedding(tgt)
+        print('encoder_outputs.size:', encoder_outputs.size())
+        print('input tgt.size', tgt.size())
+        print('input tgt.size(dim=1)', tgt.size(dim=1))
+        if tgt.size(dim=1)>1:
+            embedded = self.dropout(self.embedding(tgt))
+        else:
+            embedded = self.dropout(self.embedding(tgt[: , :-1])) #.view(1, 1, -1)
+        print('embedded.shape:', embedded.shape)
         # Initialize the output and attention scores
         outputs = []
         attn_scores = []
-        # Loop over the tgt sequence
+        # Loop over the tgt sequence -> TODO use split() from torch -> loop over the columns!!
+        print('tgt.shape[1] (max_tgt_len):', tgt.shape[1])
         for t in range(tgt.shape[1]):
             # Get the current input
-            input = embedded[:, t, :].unsqueeze(1)
-            # Apply dropout to the input
-            input = self.dropout(input)
+            # input = embedded[:, t, :].unsqueeze(1)
+            input = torch.split(embedded, tgt.shape[0], dim=1)
+            print('input.size() after torch.split:', input.size())
             # Pass the input through the LSTM
             output, dec_state = self.lstm(input, dec_state)
             # # If the attention mechanism is provided, compute the attention scores and apply attention to the output
@@ -210,9 +248,15 @@ class Decoder(nn.Module):
             #     )
             #     attn_scores.append(attn_score)
             # Append the output to the outputs list
+            output = self.dropout(output)
             outputs.append(output)
         # Concatenate the outputs into a single tensor
-        outputs = torch.cat(outputs, dim=1)
+        outputs = torch.cat(outputs, dim=1) # TODO: Check if concatination is right here
+        print('embedded input:', input.size())
+        print('outputs.size:', outputs.size())
+        print('output.size:', output.size())
+        print('decoder dec_state[0].size', dec_state[0].size())
+        print('decoder dec_state[1].size', dec_state[1].size())
 
         #############################################
         # outputs: (batch_size, max_tgt_len, hidden_size)
