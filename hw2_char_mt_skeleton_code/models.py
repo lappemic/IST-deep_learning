@@ -143,9 +143,9 @@ class Encoder(nn.Module):
         enc_output, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
         enc_output = enc_output[:, :, :self.hidden_size] + enc_output[:, : ,self.hidden_size:] # Sum bidirectional outputs
         # Apply dropout to the output
-        enc_output = self.dropout(enc_output)
-        print('enc_output.shape after Encoder:', enc_output.shape)
-        print('shape of final_hidden 1 and 2 after Encoder:', final_hidden[0].shape, final_hidden[1].shape)
+        # enc_output = self.dropout(enc_output)
+        # print('enc_output.shape after Encoder:', enc_output.shape)
+        # print('shape of final_hidden 1 and 2 after Encoder:', final_hidden[0].shape, final_hidden[1].shape)
         
         # Remarks for debugging
         # - max_src_len from input (src) and enc_output are equal
@@ -219,27 +219,37 @@ class Decoder(nn.Module):
         #     )
         #############################################
         # Get the embedded representation of the tgt sequence
-        print('encoder_outputs.size:', encoder_outputs.size())
-        print('input tgt.size', tgt.size())
-        print('input tgt.size(dim=1)', tgt.size(dim=1))
-        if tgt.size(dim=1)>1:
-            embedded = self.dropout(self.embedding(tgt))
-        else:
-            embedded = self.dropout(self.embedding(tgt[: , :-1])) #.view(1, 1, -1)
-        print('embedded.shape:', embedded.shape)
+        # print('encoder_outputs.size:', encoder_outputs.size())
+        # print('input tgt.size', tgt.size())
+        # if tgt.size(dim=1)>1:
+        #     embedded = self.dropout(self.embedding(tgt))
+        # else:
+        #     embedded = self.dropout(self.embedding(tgt[: , :-1])) #.view(1, 1, -1)
+        # print('embedded.shape:', embedded.shape)
         # Initialize the output and attention scores
         outputs = []
         attn_scores = []
-        # Loop over the tgt sequence -> TODO use split() from torch -> loop over the columns!!
-        print('tgt.shape[1] (max_tgt_len):', tgt.shape[1])
-        for t in range(tgt.shape[1]):
-            # Get the current input
-            # input = embedded[:, t, :].unsqueeze(1)
-            input = torch.split(embedded, tgt.shape[0], dim=1)
-            print('input.size() after torch.split:', input.size())
-            # Pass the input through the LSTM
-            output, dec_state = self.lstm(input, dec_state)
-            # # If the attention mechanism is provided, compute the attention scores and apply attention to the output
+        # remove START and END tokens
+        if tgt.size(dim=1)>1:
+            tgt = tgt[:, :-1]
+        # print('tgt.size after slizing:', tgt.size())
+        # Embeddings
+        embedded = self.embedding(tgt)
+        # print('embedded.size():', embedded.size())
+        # embedded: (batch_size, max_tgt_len, embedding_size)
+        # Split target tensor into a list of tensors (where each tensor corresponds to one time step of the target sequence)
+        inputs = torch.split(embedded, 1, dim=1)
+        
+        
+        # Loop over each column
+        # print('shapes of dec_states:', dec_state[0].shape, dec_state[1].shape)
+        for i in inputs:
+            # i: (batch_size, 1)
+            # print('i.size() before sqeezing:', i.size())
+            # # i = i.squeeze(1)
+            # print('i.size() after sqeezing:', i.size())
+            # calculate attention
+            # If the attention mechanism is provided, compute the attention scores and apply attention to the output
             # if self.attn is not None:
             #     output, attn_score = self.attn(
             #         output,
@@ -247,16 +257,40 @@ class Decoder(nn.Module):
             #         src_lengths,
             #     )
             #     attn_scores.append(attn_score)
-            # Append the output to the outputs list
+            # Pass the input through the LSTM
+            output, dec_state =self.lstm(i, dec_state)
+            # Apply dropout to output
             output = self.dropout(output)
             outputs.append(output)
         # Concatenate the outputs into a single tensor
-        outputs = torch.cat(outputs, dim=1) # TODO: Check if concatination is right here
-        print('embedded input:', input.size())
-        print('outputs.size:', outputs.size())
-        print('output.size:', output.size())
-        print('decoder dec_state[0].size', dec_state[0].size())
-        print('decoder dec_state[1].size', dec_state[1].size())
+        outputs = torch.cat(outputs, dim=1)
+
+        # Loop over the tgt sequence -> TODO use split() from torch -> loop over the columns!!
+        # for i in range(tgt.shape[1]):
+        #     # Get the current input
+        #     # input = embedded[:, t, :].unsqueeze(1)
+        #     input = torch.split(embedded, tgt.shape[0], dim=1)
+        #     print('input.size() after torch.split:', input.size())
+        #     # Pass the input through the LSTM
+        #     output, dec_state = self.lstm(input, dec_state)
+        #     # # If the attention mechanism is provided, compute the attention scores and apply attention to the output
+        #     # if self.attn is not None:
+        #     #     output, attn_score = self.attn(
+        #     #         output,
+        #     #         encoder_outputs,
+        #     #         src_lengths,
+        #     #     )
+        #     #     attn_scores.append(attn_score)
+        #     # Append the output to the outputs list
+        #     output = self.dropout(output)
+        #     outputs.append(output)
+        # # Concatenate the outputs into a single tensor
+        # outputs = torch.cat(outputs, dim=1) # TODO: Check if concatination is right here
+        # # print('embedded input:', input.size())
+        # print('outputs.size:', outputs.size())
+        # print('output.size:', output.size())
+        # print('decoder dec_state[0].size', dec_state[0].size())
+        # print('decoder dec_state[1].size', dec_state[1].size())
 
         #############################################
         # outputs: (batch_size, max_tgt_len, hidden_size)
