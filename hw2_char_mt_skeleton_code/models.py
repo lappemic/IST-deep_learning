@@ -141,7 +141,7 @@ class Encoder(nn.Module):
         packed_output, final_hidden = self.lstm(packed_embedded) # TODO: is self.hidden_size needed?
         # Unpack the packed sequences
         enc_output, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
-        enc_output = enc_output[:, :, :self.hidden_size] + enc_output[:, : ,self.hidden_size:] # Sum bidirectional outputs
+        enc_output = self.dropout(enc_output[:, :, :self.hidden_size] + enc_output[:, : ,self.hidden_size:]) # Sum bidirectional outputs
         # Apply dropout to the output
         # enc_output = self.dropout(enc_output)
         # print('enc_output.shape after Encoder:', enc_output.shape)
@@ -234,7 +234,7 @@ class Decoder(nn.Module):
             tgt = tgt[:, :-1]
         # print('tgt.size after slizing:', tgt.size())
         # Embeddings
-        embedded = self.embedding(tgt)
+        embedded = self.dropout(self.embedding(tgt))
         # print('embedded.size():', embedded.size())
         # embedded: (batch_size, max_tgt_len, embedding_size)
         # Split target tensor into a list of tensors (where each tensor corresponds to one time step of the target sequence)
@@ -263,7 +263,7 @@ class Decoder(nn.Module):
             output = self.dropout(output)
             outputs.append(output)
         # Concatenate the outputs into a single tensor
-        outputs = torch.cat(outputs, dim=1)
+        outputs = self.dropout(torch.cat(outputs, dim=1))
 
         # Loop over the tgt sequence -> TODO use split() from torch -> loop over the columns!!
         # for i in range(tgt.shape[1]):
