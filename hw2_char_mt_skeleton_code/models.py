@@ -34,44 +34,23 @@ class Attention(nn.Module):
         # src_lengths: (batch_size)
         # we will need to use this mask to assign float("-inf") in the attention scores
         # of the padding tokens (such that the output of the softmax is 0 in those positions)
-        # Tip: use torch.masked_fill to do this
         # src_seq_mask: (batch_size, max_src_len)
         # the "~" is the elementwise NOT operator
         src_seq_mask = ~self.sequence_mask(src_lengths)
+        #############################################        
+        # - z: (batch_size, 1, hidden_size)
+        z = self.linear_in(query)
+        attn_scores = torch.bmm(z, encoder_outputs.transpose(1, 2))
+        # 
+        attn_scores.masked_fill_(src_seq_mask.unsqueeze(1), float('-inf'))
+        # attn_weights: (batch_size, 1, 19)
+        attn_weights = torch.softmax(attn_scores, dim=-1)
+        # - context: (hidden_size)
+        context = torch.bmm(attn_weights, encoder_outputs)
+        # - attn_out: (hidden_size)
+        attn_out = torch.tanh(self.linear_out(torch.cat((query, context), 2)))
         #############################################
-        # TODO: Implement the forward pass of the attention layer
-        # Hints:
-        # - Use torch.bmm to do the batch matrix multiplication
-        #    (it does matrix multiplication for each sample in the batch)
-        # - Use torch.softmax to do the softmax
-        # - Use torch.tanh to do the tanh
-        # - Use torch.masked_fill to do the masking of the padding tokens
-        #############################################
-        # just initially taken from https://github.com/spro/practical-pytorch/blob/master/seq2seq-translation/seq2seq-translation-batched.ipynb
-        # to have a starting point (good source look at it ass soon as you get here):
-        max_len = encoder_outputs.size(0)
-        this_batch_size = encoder_outputs.size(1)
-
-        # Create variable to store attention energies
-        attn_energies = Variable(torch.zeros(this_batch_size, max_len)) # B x S
-
-        if USE_CUDA:
-            attn_energies = attn_energies.cuda()
-
-        # For each batch of encoder outputs
-        for b in range(this_batch_size):
-            # Calculate energy for each encoder output
-            for i in range(max_len):
-                attn_energies[b, i] = self.score(hidden[:, b], encoder_outputs[i, b].unsqueeze(0))
-                # self.score is another method in the class in the source where 'general attention' is applied as well!
-
-        # Normalize energies to weights in range 0 to 1, resize to 1 x B x S
-        attn_out = F.softmax(attn_energies).unsqueeze(1)
-        #############################################
-        # END OF YOUR CODE
-        #############################################
-        # attn_out: (batch_size, 1, hidden_size)
-        # TODO: Uncomment the following line when you implement the forward pass
+        # # attn_out: (batch_size, 1, hidden_size)
         return attn_out
 
     def sequence_mask(self, lengths):
@@ -121,18 +100,9 @@ class Encoder(nn.Module):
         # src: (batch_size, max_src_len)
         # lengths: (batch_size)
         #############################################
-        # TODO: Implement the forward pass of the encoder
-        # Hints:
-        # - Use torch.nn.utils.rnn.pack_padded_sequence to pack the padded sequences
-        #   (before passing them to the LSTM)
-        # - Use torch.nn.utils.rnn.pad_packed_sequence to unpack the packed sequences
-        #   (after passing them to the LSTM)
-        #############################################
-        # print(src.shape)
-    
         # Get the embedded representation of the src sequence
         embedded = self.dropout(self.embedding(src))
-        # Pack the padded sequences TODO: Check values of batch_first and enforce_sorted! Are they True resp. False correct?
+        # Pack the padded sequences
         packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, 
                                                             lengths, 
                                                             batch_first=True, 
@@ -141,16 +111,8 @@ class Encoder(nn.Module):
         packed_output, final_hidden = self.lstm(packed_embedded) # TODO: is self.hidden_size needed?
         # Unpack the packed sequences
         enc_output, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
-        enc_output = self.dropout(enc_output[:, :, :self.hidden_size] + enc_output[:, : ,self.hidden_size:]) # Sum bidirectional outputs
         # Apply dropout to the output
-        # enc_output = self.dropout(enc_output)
-        # print('enc_output.shape after Encoder:', enc_output.shape)
-        # print('shape of final_hidden 1 and 2 after Encoder:', final_hidden[0].shape, final_hidden[1].shape)
-        
-        # Remarks for debugging
-        # - max_src_len from input (src) and enc_output are equal
-        # - enc_output has the right dimensions
-
+        enc_output = self.dropout(enc_output)
         #############################################
         # enc_output: (batch_size, max_src_len, hidden_size)
         # final_hidden: tuple with 2 tensors
@@ -204,100 +166,35 @@ class Decoder(nn.Module):
         if dec_state[0].shape[0] == 2:
             dec_state = reshape_state(dec_state)
         #############################################
-        # TODO: Implement the forward pass of the decoder
-        # Hints:
-        # - the input to the decoder is the previous target token,
-        #   and the output is the next target token
-        # - New token representations should be generated one at a time, given
-        #   the previous token representation and the previous decoder state
-        # - Add this somewhere in the decoder loop when you implement the attention mechanism in 3.2:
-        # if self.attn is not None:
-        #     output = self.attn(
-        #         output,
-        #         encoder_outputs,
-        #         src_lengths,
-        #     )
-        #############################################
-        # Get the embedded representation of the tgt sequence
-        # print('encoder_outputs.size:', encoder_outputs.size())
-        # print('input tgt.size', tgt.size())
-        # if tgt.size(dim=1)>1:
-        #     embedded = self.dropout(self.embedding(tgt))
-        # else:
-        #     embedded = self.dropout(self.embedding(tgt[: , :-1])) #.view(1, 1, -1)
-        # print('embedded.shape:', embedded.shape)
-        # Initialize the output and attention scores
         outputs = []
-        attn_scores = []
-        # remove START and END tokens
+        # remove END token
         if tgt.size(dim=1)>1:
             tgt = tgt[:, :-1]
-        # print('tgt.size after slizing:', tgt.size())
-        # Embeddings
+        # Create embeddings
         embedded = self.dropout(self.embedding(tgt))
-        # print('embedded.size():', embedded.size())
         # embedded: (batch_size, max_tgt_len, embedding_size)
         # Split target tensor into a list of tensors (where each tensor corresponds to one time step of the target sequence)
         inputs = torch.split(embedded, 1, dim=1)
-        
-        
         # Loop over each column
-        # print('shapes of dec_states:', dec_state[0].shape, dec_state[1].shape)
         for i in inputs:
-            # i: (batch_size, 1)
-            # print('i.size() before sqeezing:', i.size())
-            # # i = i.squeeze(1)
-            # print('i.size() after sqeezing:', i.size())
-            # calculate attention
-            # If the attention mechanism is provided, compute the attention scores and apply attention to the output
-            # if self.attn is not None:
-            #     output, attn_score = self.attn(
-            #         output,
-            #         encoder_outputs,
-            #         src_lengths,
-            #     )
-            #     attn_scores.append(attn_score)
             # Pass the input through the LSTM
             output, dec_state =self.lstm(i, dec_state)
-            # Apply dropout to output
-            output = self.dropout(output)
+            # calculate attention
+            # If the attention mechanism is provided, compute the attention scores and apply attention to the output
+            if self.attn is not None:
+                output = self.attn(
+                    output,
+                    encoder_outputs,
+                    src_lengths,
+                )
             outputs.append(output)
         # Concatenate the outputs into a single tensor
         outputs = self.dropout(torch.cat(outputs, dim=1))
-
-        # Loop over the tgt sequence -> TODO use split() from torch -> loop over the columns!!
-        # for i in range(tgt.shape[1]):
-        #     # Get the current input
-        #     # input = embedded[:, t, :].unsqueeze(1)
-        #     input = torch.split(embedded, tgt.shape[0], dim=1)
-        #     print('input.size() after torch.split:', input.size())
-        #     # Pass the input through the LSTM
-        #     output, dec_state = self.lstm(input, dec_state)
-        #     # # If the attention mechanism is provided, compute the attention scores and apply attention to the output
-        #     # if self.attn is not None:
-        #     #     output, attn_score = self.attn(
-        #     #         output,
-        #     #         encoder_outputs,
-        #     #         src_lengths,
-        #     #     )
-        #     #     attn_scores.append(attn_score)
-        #     # Append the output to the outputs list
-        #     output = self.dropout(output)
-        #     outputs.append(output)
-        # # Concatenate the outputs into a single tensor
-        # outputs = torch.cat(outputs, dim=1) # TODO: Check if concatination is right here
-        # # print('embedded input:', input.size())
-        # print('outputs.size:', outputs.size())
-        # print('output.size:', output.size())
-        # print('decoder dec_state[0].size', dec_state[0].size())
-        # print('decoder dec_state[1].size', dec_state[1].size())
-
         #############################################
         # outputs: (batch_size, max_tgt_len, hidden_size)
         # dec_state: tuple with 2 tensors
         # each tensor is (num_layers, batch_size, hidden_size)
-        # TODO: Uncomment the following line when you implement the forward pass
-        return outputs, dec_state #, attn_scores
+        return outputs, dec_state
 
 
 class Seq2Seq(nn.Module):
