@@ -26,6 +26,6 @@ features = number of output channels × output width × output height).
 - An aﬃne transformation with the number of classes followed by an output LogSoftmax layer.
 
 The model can be used as follows:
-'''python
+````python
 python hw2-q2.py [-h] [-epochs EPOCHS] [-batch_size BATCH_SIZE] [-learning_rate LEARNING_RATE] [-l2_decay L2_DECAY] [-dropout DROPOUT] [-optimizer {sgd,adam}]
-'''
+```
