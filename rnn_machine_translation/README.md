@@ -2,7 +2,7 @@
 A vanilla characterlevel machine translation model using an encoder-decoder architecture with an autoregressive LSTM as the decoder and a Bidirectional LSTM in the encoder is implemented. At each 
 time-step, the LSTM decoder receives as input the embedding of the current word, then each output at each timestep has dropout applied and the resulting decoder state is 
 used in the next timestep. In the end, all decoder outputs are concatenated to form an output sequence.  
-An attention mechanism is added to the decoder (bilinear attention), which weights the contribution of the diﬀerent source characters, according to relevance for the current prediction.\
+An attention mechanism is added to the decoder (bilinear attention), which weights the contribution of the diﬀerent source characters, according to relevance for the current prediction.
 
 The model can be used as follows:
 ```python
