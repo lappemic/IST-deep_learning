@@ -13,6 +13,7 @@ features = number of output channels × output width × output height).
 - An aﬃne transformation with 120 output features.
 - A rectiﬁed linear unit activation function.
 - An aﬃne transformation with the number of classes followed by an output LogSoftmax layer.\
+
 The model can be used as follows:
 
 ```python
