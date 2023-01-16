@@ -14,6 +14,16 @@ features = number of output channels × output width × output height).
 - A rectiﬁed linear unit activation function.
 - An aﬃne transformation with the number of classes followed by an output LogSoftmax layer.
 The model can be used as follows:
-````python
-python hw2-q2.py [-h] [-epochs EPOCHS] [-batch_size BATCH_SIZE] [-learning_rate LEARNING_RATE] [-l2_decay L2_DECAY] [-dropout DROPOUT] [-optimizer {sgd,adam}]
+
+```python
+python hw2-q2.py [-h] [-epochs EPOCHS] [-batch_size BATCH_SIZE] [-learning_rate LEARNING_RATE] 
+			[-l2_decay L2_DECAY] [-dropout DROPOUT] [-optimizer {sgd,adam}]
 ```
+
+to use all default values just use
+
+```python
+python hw2-q2.py
+```
+
+like that the CNN will be trained with 50 epochs, a learning rate of 0.003, a dropout rate of 0.3, a hidden size of 128, and a batch size of 64 uzing stochastic gradient decent as optimizer.
